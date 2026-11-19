@@ -752,7 +752,7 @@
       if (lvlNum > state.unlockedLevel) return;
       const lvlObj = LEVELS[lvlNum - 1];
       activeQuiz = {
-        levelObj,
+        lvlObj,
         index: 0,
         correctCount: 0,
         caughtCount: 0,
@@ -763,13 +763,13 @@
     }
 
     function renderQuestion() {
-      const qObj = activeQuiz.levelObj.questions[activeQuiz.index];
+      const qObj = activeQuiz.lvlObj.questions[activeQuiz.index];
       document.getElementById("quiz-level-label").textContent =
-        `Level ${activeQuiz.levelObj.level} — Question ${activeQuiz.index + 1} / ${activeQuiz.levelObj.questions.length}`;
+        `Level ${activeQuiz.lvlObj.level} — Question ${activeQuiz.index + 1} / ${activeQuiz.lvlObj.questions.length}`;
       document.getElementById("quiz-score-label").textContent =
         `Correct: ${activeQuiz.correctCount} | Caught: ${activeQuiz.caughtCount}`;
       document.getElementById("quiz-progress-bar").style.width =
-        `${(activeQuiz.index / activeQuiz.levelObj.questions.length) * 100}%`;
+        `${(activeQuiz.index / activeQuiz.lvlObj.questions.length) * 100}%`;
       document.getElementById("question-text").textContent = qObj.q;
       document.getElementById("answer-feedback").textContent = "";
       document.getElementById("catch-reward-area").innerHTML = "";
