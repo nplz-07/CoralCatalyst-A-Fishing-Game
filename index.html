@@ -790,7 +790,7 @@
     function selectAnswer(idx, btnEl) {
       if (activeQuiz.answered) return;
       activeQuiz.answered = true;
-      const qObj = activeQuiz.levelObj.questions[activeQuiz.index];
+      const qObj = activeQuiz.lvlObj.questions[activeQuiz.index];
       const allBtns = document.querySelectorAll("#options-grid .opt-btn");
       allBtns.forEach((b, i) => {
         b.disabled = true;
@@ -803,7 +803,7 @@
         fb.style.color = "var(--ok)";
         fb.textContent = "Correct! Casting your line...";
 
-        const fish = catchNewFish(activeQuiz.levelObj.level);
+        const fish = catchNewFish(activeQuiz.lvlObj.level);
         activeQuiz.caughtCount += 1;
         const attrBadge = fish.attr !== "Normal"
           ? `<span class="tag attr-${fish.attr}">${fish.attr}</span>`
@@ -827,12 +827,12 @@
         `Correct: ${activeQuiz.correctCount} | Caught: ${activeQuiz.caughtCount}`;
       document.getElementById("next-q-btn").disabled = false;
       document.getElementById("next-q-btn").textContent =
-        activeQuiz.index === activeQuiz.levelObj.questions.length - 1 ? "Finish Level ✓" : "Next Question →";
+        activeQuiz.index === activeQuiz.lvlObj.questions.length - 1 ? "Finish Level ✓" : "Next Question →";
     }
 
     function nextQuestion() {
       if (!activeQuiz.answered) return;
-      if (activeQuiz.index < activeQuiz.levelObj.questions.length - 1) {
+      if (activeQuiz.index < activeQuiz.lvlObj.questions.length - 1) {
         activeQuiz.index += 1;
         renderQuestion();
       } else {
@@ -841,7 +841,7 @@
     }
 
     function completeCurrentLevel() {
-      const lvl = activeQuiz.levelObj.level;
+      const lvl = activeQuiz.lvlObj.level;
       const firstTime = !state.completedLevels.includes(lvl);
       if (firstTime) {
         state.completedLevels.push(lvl);
