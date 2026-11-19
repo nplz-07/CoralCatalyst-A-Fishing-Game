@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaQuest 20 — Fish Trivia & Catch Game</title>
+  <style>
+    :root {
+      --bg-top: #0b4f6c;
+      --bg-mid: #083344;
+      --bg-bot: #041c2c;
+      --card: rgba(12, 45, 66, 0.88);
+      --card-border: rgba(125, 211, 252, 0.22);
+      --text: #f0f9ff;
+      --muted: #bae6fd;
+      --accent: #38bdf8;
+      --accent-2: #2dd4bf;
+      --gold: #fbbf24;
+      --danger: #f87171;
+      --ok: #4ade80;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 52%, var(--bg-bot) 100%);
+      overflow-x: hidden;
+    }
+
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 25%, #0e7490, #083344 55%, #02131d);
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+    #loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader-title { font-size: 2rem; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .fact-box {
+      max-width: 540px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(186, 230, 253, 0.28);
+      border-radius: 16px;
+      padding: 18px 22px;
+      margin: 18px 0 22px;
+      line-height: 1.5;
+    }
+    .fact-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--gold); font-weight: 700; margin-bottom: 6px; }
+    .progress-wrap { width: 280px; height: 10px; background: rgba(255,255,255,0.14); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-2), var(--gold)); transition: width 0.2s ease; }
+
+    /* Top Bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(4, 28, 44, 0.85);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .brand { font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+    .pill {
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(186,230,253,0.2);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-weight: 650;
+      font-size: 0.88rem;
+      color: var(--text);
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(125, 211, 252, 0.35);
+      transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(56, 189, 248, 0.32); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary { background: linear-gradient(135deg, #0284c7, #0d9488); border-color: transparent; }
+    button.gold-btn { background: linear-gradient(135deg, #d97706, #eab308); color: #09131c; border-color: transparent; }
+    button.active-tab { background: var(--accent); color: #041c2c; border-color: var(--accent); }
+
+    /* Main Container */
+    main { max-width: 980px; margin: 0 auto; padding: 22px 16px 64px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .banner {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .badge-ngp {
+      background: rgba(251, 191, 36, 0.18);
+      color: var(--gold);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    /* Duolingo-style Level Path */
+    .level-path {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+    }
+    .level-node-wrap {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 12px 16px;
+    }
+    .level-node-wrap:nth-child(odd) { transform: translateX(-18px); }
+    .level-node-wrap:nth-child(even) { transform: translateX(18px); }
+    @media (max-width: 560px) {
+      .level-node-wrap:nth-child(odd), .level-node-wrap:nth-child(even) { transform: none; }
+    }
+    .level-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+      background: rgba(148, 163, 184, 0.25);
+      border: 2px solid rgba(148, 163, 184, 0.4);
+    }
+    .level-circle.unlocked { background: rgba(56, 189, 248, 0.25); border-color: var(--accent); }
+    .level-circle.completed { background: rgba(74, 222, 128, 0.22); border-color: var(--ok); color: #dcfce7; }
+    .level-circle.final { border-color: var(--gold); box-shadow: 0 0 18px rgba(251, 191, 36, 0.35); }
+    .level-meta { flex: 1; }
+    .level-meta h3 { font-size: 0.98rem; }
+    .level-meta p { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+    /* Quiz Stage */
+    .quiz-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 22px;
+    }
+    .quiz-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 0.9rem; color: var(--muted); }
+    .q-progress { height: 8px; background: rgba(255,255,255,0.12); border-radius: 999px; overflow: hidden; margin-bottom: 18px; }
+    .q-progress > div { height: 100%; background: var(--accent-2); transition: width 0.25s ease; }
+    .question-text { font-size: 1.15rem; font-weight: 700; line-height: 1.45; margin-bottom: 18px; }
+    .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .opt-btn { text-align: left; padding: 14px 16px; border-radius: 14px; font-size: 0.95rem; line-height: 1.35; }
+    .opt-btn.correct { background: rgba(74, 222, 128, 0.28); border-color: var(--ok); }
+    .opt-btn.wrong { background: rgba(248, 113, 113, 0.28); border-color: var(--danger); }
+
+    .catch-box {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(4, 28, 44, 0.78);
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    /* Rarity Colors */
+    .r-Common { color: #cbd5e1; border-color: #94a3b8; }
+    .r-Uncommon { color: #4ade80; border-color: #4ade80; }
+    .r-Rare { color: #60a5fa; border-color: #60a5fa; }
+    .r-Epic { color: #c084fc; border-color: #c084fc; }
+    .r-Legendary { color: #fbbf24; border-color: #fbbf24; }
+    .r-Deep-Sea { color: #2dd4bf; border-color: #2dd4bf; text-shadow: 0 0 12px rgba(45, 212, 191, 0.5); }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid currentColor;
+      margin-right: 6px;
+    }
+    .attr-Albino { background: rgba(255,255,255,0.16); color: #ffe4e6; border-color: #fda4af; }
+    .attr-Shiny { background: rgba(251,191,36,0.2); color: #fef08a; border-color: #fde047; }
+
+    /* Grids & Cards */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .panel h3 { margin-bottom: 10px; font-size: 1.05rem; }
+    .small { font-size: 0.84rem; color: var(--muted); line-height: 1.45; }
+
+    .fish-item {
+      background: rgba(4, 28, 44, 0.65);
+      border: 1px solid rgba(125, 211, 252, 0.22);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* 1-Slot Aquarium */
+    #aquarium-canvas {
+      width: 100%;
+      height: 270px;
+      border-radius: 16px;
+      border: 2px solid rgba(186, 230, 253, 0.35);
+      display: block;
+      margin: 12px 0;
+    }
+    .theme-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .color-swatch {
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 95px;
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(2, 19, 29, 0.8);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      font-size: 0.8rem;
+      margin: 8px 0;
+    }
+    select {
+      background: #083344;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen (1 of 5 Random Fish Facts) -->
+  <div id="loading-screen">
+    <div class="loader-title">🐟 AquaQuest 20</div>
+    <p class="small">Preparing 20 levels, 300 fish questions &amp; 54 species...</p>
+    <div class="fact-box">
+      <div class="fact-label">Random Fish Fact</div>
+      <div id="loading-fact">Loading fact...</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-fill" id="loading-bar"></div>
+    </div>
+  </div>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="brand">
+      <span>🎣 AquaQuest 20</span>
+      <span class="pill" id="hud-progress">Level 1 / 20</span>
+      <span class="pill" id="hud-catches">🐟 0 Caught</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="active-tab" data-tab="map" onclick="switchTab('map')">Levels</button>
+      <button data-tab="inventory" onclick="switchTab('inventory')">Tackle &amp; Fish</button>
+      <button data-tab="aquarium" onclick="switchTab('aquarium')">Aquarium (1 Slot)</button>
+      <button data-tab="save" onclick="switchTab('save')">Save &amp; Proof</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEVELS MAP VIEW -->
+    <section id="view-map" class="view active">
+      <div class="banner">
+        <div>
+          <h2 id="map-heading">20-Level Fish Mastery Path</h2>
+          <p class="small" style="margin-top:4px;">15 questions per level • Every right answer gives a chance to catch a fish • Every 3 completed levels awards a Fish Crate!</p>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <span id="ngp-badge" class="badge-ngp" style="display:none;">Mastery Replay Mode: Rare+ Odds Nerfed</span>
+          <button class="gold-btn" id="crate-claim-btn" onclick="openCrate()" disabled>📦 Crates Ready: 0</button>
+        </div>
+      </div>
+
+      <div id="crate-result-banner" class="panel" style="display:none; border-color: var(--gold);"></div>
+
+      <div class="level-path" id="level-path"></div>
+    </section>
+
+    <!-- ACTIVE LEVEL / QUIZ VIEW -->
+    <section id="view-quiz" class="view">
+      <div class="quiz-card">
+        <div class="quiz-top">
+          <span id="quiz-level-label">Level 1 — Question 1 / 15</span>
+          <span id="quiz-score-label">Correct: 0 | Caught: 0</span>
+          <button onclick="switchTab('map')">← Back to Map</button>
+        </div>
+        <div class="q-progress"><div id="quiz-progress-bar" style="width:0%"></div></div>
+        <div class="question-text" id="question-text"></div>
+        <div class="options-grid" id="options-grid"></div>
+        <div id="answer-feedback" class="small" style="margin-top:14px; min-height:22px;"></div>
+        <div id="catch-reward-area"></div>
+        <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+          <button class="primary" id="next-q-btn" onclick="nextQuestion()" disabled>Next Question →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TACKLE & CAUGHT FISH VIEW -->
+    <section id="view-inventory" class="view">
+      <div class="grid-2">
+        <div class="panel">
+          <h3>🪱 Equip Bait (Boosts Rarer Fish Odds)</h3>
+          <p class="small">Equipped Bait increases the chance of rolling Uncommon through Deep-Sea fish.</p>
+          <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <select id="bait-select" onchange="equipGear()"></select>
+            <span class="small" id="bait-counts"></span>
+          </div>
+          <ul class="small" id="bait-inventory-list" style="margin-top:12px; padding-left:18px;"></ul>
+        </div>
+
+        <div class="panel">
+          <h3>🎈 Equip Bobber (Epic, Legendary &amp; Deep-Sea)</h3>
+          <p class="small">Wooden, Iron, and Gold bobbers boost Epic &amp; Legendary odds; <strong>only the Gold Bobber</strong> boosts Deep-Sea odds.</p>
+          <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <select id="bobber-select" onchange="equipGear()"></select>
+            <span class="small" id="bobber-counts"></span>
+          </div>
+          <ul class="small" id="bobber-inventory-list" style="margin-top:12px; padding-left:18px;"></ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+          <h3 style="margin:0;">🐟 Caught Fish Collection (<span id="fish-total-count">0</span>)</h3>
+          <span class="small" id="rarity-summary"></span>
+        </div>
+        <div class="grid-3" id="fish-collection-grid"></div>
+      </div>
+    </section>
+
+    <!-- 1-SLOT AQUARIUM VIEW -->
+    <section id="view-aquarium" class="view">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3>🌊 Showcase Aquarium (1 Fish Slot)</h3>
+            <p class="small">Pick 1 fish from Common up to Deep-Sea to swim in your tank, customize tank color, and collect likes.</p>
+          </div>
+          <button class="gold-btn" onclick="likeAquarium()">❤️ Like Tank (<span id="tank-likes">0</span>)</button>
+        </div>
+
+        <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <label class="small" for="aquarium-fish-select"><strong>Display Fish:</strong></label>
+          <select id="aquarium-fish-select" onchange="setAquariumFish()"></select>
+        </div>
+
+        <div class="theme-row">
+          <button class="color-swatch" style="background:#0e7490;" onclick="setTankTheme('ocean')">Ocean Teal</button>
+          <button class="color-swatch" style="background:#1e1b4b;" onclick="setTankTheme('abyss')">Midnight Abyss</button>
+          <button class="color-swatch" style="background:#065f46;" onclick="setTankTheme('kelp')">Emerald Kelp</button>
+          <button class="color-swatch" style="background:#9a3412;" onclick="setTankTheme('sunset')">Sunset Reef</button>
+        </div>
+
+        <canvas id="aquarium-canvas" width="900" height="270"></canvas>
+        <div id="aquarium-fish-details" class="small"></div>
+      </div>
+    </section>
+
+    <!-- SAVE & TIMESTAMP PROOF VIEW -->
+    <section id="view-save" class="view">
+      <div class="panel">
+        <h3>💾 Local Save &amp; Timestamp Verification</h3>
+        <p class="small">Save your progression locally before quitting. Every save and every caught fish records an exact timestamp so players can prove when rare or Deep-Sea fish were caught.</p>
+        <div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <button class="primary" onclick="manualSave()">💾 Save Game Now</button>
+          <button onclick="exportSaveCode()">📋 Export Save Code</button>
+          <button onclick="importSaveCode()">📥 Load Save Code</button>
+          <button style="background:rgba(248,113,113,0.22); border-color:var(--danger);" onclick="resetAllData()">🗑️ Reset Save</button>
+        </div>
+        <p class="small" id="last-saved-label" style="margin-top:12px; color: var(--ok);">Last saved: Never</p>
+        <textarea id="save-code-box" placeholder="Save code will appear here when exported, or paste a save code here and click 'Load Save Code'..."></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- 1. FIVE RANDOM FUN FISH FACTS FOR LOADING SCREEN ---
+    const FISH_FACTS = [
+      "Sharks have been swimming in Earth's oceans for over 400 million years—older than trees and Saturn's rings!",
+      "Clownfish can change their sex; if the dominant female dies, the largest male becomes female.",
+      "The Giant Oarfish can grow over 8 meters (26 feet) long and is one of the inspirations for sea serpent legends.",
+      "Archerfish shoot precise jets of water from their mouths to knock insects off overhanging leaves.",
+      "A group of fish is called a school when they swim in coordinated patterns, and a shoal when swimming loosely together."
+    ];
+
+    // --- 2. 54 FISH SPECIES (INCLUDING STRICTLY 3 DEEP-SEA SPECIES) ---
+    const FISH_SPECIES = [
+      // Common (14)
+      { name: "Bluegill Sunfish", rarity: "Common", minKg: 0.1, maxKg: 1.2, minCm: 10, maxCm: 30, color: "#64748b" },
+      { name: "Common Carp", rarity: "Common", minKg: 0.5, maxKg: 8.0, minCm: 25, maxCm: 75, color: "#9ca3af" },
+      { name: "Yellow Perch", rarity: "Common", minKg: 0.2, maxKg: 1.5, minCm: 15, maxCm: 38, color: "#eab308" },
+      { name: "Atlantic Herring", rarity: "Common", minKg: 0.1, maxKg: 0.7, minCm: 18, maxCm: 35, color: "#94a3b8" },
+      { name: "Guppy", rarity: "Common", minKg: 0.01, maxKg: 0.03, minCm: 2, maxCm: 6, color: "#fb923c" },
+      { name: "Tilapia", rarity: "Common", minKg: 0.3, maxKg: 3.0, minCm: 18, maxCm: 45, color: "#78716c" },
+      { name: "Sardine", rarity: "Common", minKg: 0.05, maxKg: 0.3, minCm: 12, maxCm: 25, color: "#cbd5e1" },
+      { name: "Bullhead Catfish", rarity: "Common", minKg: 0.3, maxKg: 2.5, minCm: 20, maxCm: 48, color: "#57534e" },
+      { name: "Goldfish", rarity: "Common", minKg: 0.1, maxKg: 1.8, minCm: 8, maxCm: 35, color: "#f97316" },
+      { name: "Rock Bass", rarity: "Common", minKg: 0.2, maxKg: 1.2, minCm: 15, maxCm: 32, color: "#854d0e" },
+      { name: "Mullet", rarity: "Common", minKg: 0.3, maxKg: 3.5, minCm: 22, maxCm: 55, color: "#a1a1aa" },
+      { name: "Crucian Carp", rarity: "Common", minKg: 0.2, maxKg: 2.2, minCm: 15, maxCm: 40, color: "#ca8a04" },
+      { name: "Zebra Danio", rarity: "Common", minKg: 0.01, maxKg: 0.02, minCm: 3, maxCm: 5, color: "#38bdf8" },
+      { name: "White Crappie", rarity: "Common", minKg: 0.2, maxKg: 1.8, minCm: 16, maxCm: 42, color: "#d4d4d8" },
+
+      // Uncommon (12)
+      { name: "Rainbow Trout", rarity: "Uncommon", minKg: 0.5, maxKg: 7.0, minCm: 25, maxCm: 70, color: "#ec4899" },
+      { name: "Largemouth Bass", rarity: "Uncommon", minKg: 0.8, maxKg: 9.0, minCm: 28, maxCm: 72, color: "#22c55e" },
+      { name: "Clownfish", rarity: "Uncommon", minKg: 0.05, maxKg: 0.25, minCm: 6, maxCm: 14, color: "#ea580c" },
+      { name: "Northern Pike", rarity: "Uncommon", minKg: 1.2, maxKg: 14.0, minCm: 45, maxCm: 110, color: "#16a34a" },
+      { name: "Mackerel", rarity: "Uncommon", minKg: 0.4, maxKg: 3.5, minCm: 25, maxCm: 55, color: "#0284c7" },
+      { name: "Betta Fish", rarity: "Uncommon", minKg: 0.02, maxKg: 0.08, minCm: 5, maxCm: 8, color: "#e11d48" },
+      { name: "Walleye", rarity: "Uncommon", minKg: 0.6, maxKg: 6.5, minCm: 30, maxCm: 75, color: "#a3e635" },
+      { name: "Bonefish", rarity: "Uncommon", minKg: 1.0, maxKg: 6.0, minCm: 35, maxCm: 75, color: "#bae6fd" },
+      { name: "Archerfish", rarity: "Uncommon", minKg: 0.1, maxKg: 0.9, minCm: 12, maxCm: 30, color: "#facc15" },
+      { name: "Snook", rarity: "Uncommon", minKg: 1.0, maxKg: 12.0, minCm: 40, maxCm: 95, color: "#4ade80" },
+      { name: "Pufferfish", rarity: "Uncommon", minKg: 0.3, maxKg: 4.0, minCm: 15, maxCm: 45, color: "#fde047" },
+      { name: "Brook Trout", rarity: "Uncommon", minKg: 0.4, maxKg: 5.0, minCm: 22, maxCm: 60, color: "#fb7185" },
+
+      // Rare (11)
+      { name: "Atlantic Salmon", rarity: "Rare", minKg: 2.0, maxKg: 22.0, minCm: 50, maxCm: 120, color: "#f43f5e" },
+      { name: "Red Snapper", rarity: "Rare", minKg: 1.5, maxKg: 15.0, minCm: 35, maxCm: 90, color: "#ef4444" },
+      { name: "Mahi-Mahi", rarity: "Rare", minKg: 3.0, maxKg: 25.0, minCm: 60, maxCm: 140, color: "#10b981" },
+      { name: "Mandarinfish", rarity: "Rare", minKg: 0.02, maxKg: 0.1, minCm: 4, maxCm: 8, color: "#3b82f6" },
+      { name: "Barracuda", rarity: "Rare", minKg: 3.0, maxKg: 28.0, minCm: 65, maxCm: 150, color: "#60a5fa" },
+      { name: "Lionfish", rarity: "Rare", minKg: 0.2, maxKg: 1.4, minCm: 18, maxCm: 38, color: "#dc2626" },
+      { name: "Sturgeon", rarity: "Rare", minKg: 10.0, maxKg: 95.0, minCm: 90, maxCm: 240, color: "#475569" },
+      { name: "King Mackerel", rarity: "Rare", minKg: 4.0, maxKg: 35.0, minCm: 70, maxCm: 160, color: "#38bdf8" },
+      { name: "Arowana", rarity: "Rare", minKg: 1.5, maxKg: 8.0, minCm: 45, maxCm: 95, color: "#f59e0b" },
+      { name: "Halibut", rarity: "Rare", minKg: 8.0, maxKg: 80.0, minCm: 75, maxCm: 200, color: "#64748b" },
+      { name: "Electric Eel", rarity: "Rare", minKg: 5.0, maxKg: 22.0, minCm: 90, maxCm: 210, color: "#334155" },
+
+      // Epic (9)
+      { name: "Bluefin Tuna", rarity: "Epic", minKg: 40.0, maxKg: 260.0, minCm: 120, maxCm: 280, color: "#2563eb" },
+      { name: "Giant Trevally", rarity: "Epic", minKg: 12.0, maxKg: 70.0, minCm: 70, maxCm: 165, color: "#818cf8" },
+      { name: "Swordfish", rarity: "Epic", minKg: 35.0, maxKg: 220.0, minCm: 130, maxCm: 290, color: "#3b82f6" },
+      { name: "Manta Ray", rarity: "Epic", minKg: 80.0, maxKg: 450.0, minCm: 180, maxCm: 420, color: "#1e293b" },
+      { name: "Goliath Grouper", rarity: "Epic", minKg: 45.0, maxKg: 240.0, minCm: 110, maxCm: 230, color: "#a855f7" },
+      { name: "Wahoo", rarity: "Epic", minKg: 10.0, maxKg: 65.0, minCm: 90, maxCm: 190, color: "#6366f1" },
+      { name: "Sailfish", rarity: "Epic", minKg: 25.0, maxKg: 110.0, minCm: 140, maxCm: 270, color: "#0ea5e9" },
+      { name: " Arapaima", rarity: "Epic", minKg: 30.0, maxKg: 160.0, minCm: 120, maxCm: 250, color: "#c026d3" },
+      { name: "Sunfish (Mola Mola)", rarity: "Epic", minKg: 120.0, maxKg: 600.0, minCm: 140, maxCm: 260, color: "#94a3b8" },
+
+      // Legendary (5)
+      { name: "Golden Dorado", rarity: "Legendary", minKg: 5.0, maxKg: 32.0, minCm: 55, maxCm: 115, color: "#fbbf24" },
+      { name: "White Marlin", rarity: "Legendary", minKg: 25.0, maxKg: 95.0, minCm: 150, maxCm: 260, color: "#fde047" },
+      { name: "Great Hammerhead", rarity: "Legendary", minKg: 90.0, maxKg: 420.0, minCm: 200, maxCm: 400, color: "#f59e0b" },
+      { name: "Beluga Sturgeon", rarity: "Legendary", minKg: 150.0, maxKg: 750.0, minCm: 210, maxCm: 450, color: "#eab308" },
+      { name: "Oceanic Whitetip", rarity: "Legendary", minKg: 40.0, maxKg: 165.0, minCm: 140, maxCm: 290, color: "#fcd34d" },
+
+      // Deep-Sea (STRICTLY 3 SPECIES)
+      { name: "Giant Oarfish", rarity: "Deep-Sea", minKg: 60.0, maxKg: 270.0, minCm: 250, maxCm: 650, color: "#2dd4bf" },
+      { name: "Humpback Anglerfish", rarity: "Deep-Sea", minKg: 2.0, maxKg: 25.0, minCm: 35, maxCm: 100, color: "#14b8a6" },
+      { name: "Goblin Shark", rarity: "Deep-Sea", minKg: 50.0, maxKg: 210.0, minCm: 180, maxCm: 380, color: "#5eead4" }
+    ];
+
+    // --- 3. BAITS & BOBBERS DEFINITIONS ---
+    const BAITS = {
+      none: { name: "No Bait", tier: "None", bonus: 0 },
+      good_worm: { name: "Good Worm Bait", tier: "Good Bait", bonus: 0.06 },
+      great_shrimp: { name: "Great Shrimp Bait", tier: "Great Bait", bonus: 0.13 },
+      amazing_krill: { name: "Amazing Krill Bait", tier: "Amazing Bait", bonus: 0.22 }
+    };
+
+    const BOBBERS = {
+      wooden: { name: "Wooden Bobber", luck: 1, epicLegendBoost: 0.0, deepSeaBoost: 0.0 },
+      iron: { name: "Iron Bobber", luck: 2, epicLegendBoost: 0.06, deepSeaBoost: 0.0 },
+      gold: { name: "Gold Bobber", luck: 3, epicLegendBoost: 0.12, deepSeaBoost: 0.04 }
+    };
+
+    // --- 4. 20 LEVELS x 15 QUESTIONS = 300 FISH QUESTIONS ---
+    const QUESTION_BANK_BY_TOPIC = [
+      { topic: "Fins & Anatomy", q: "Which fin primarily propels most fish forward through water?", opts: ["Caudal (tail) fin", "Dorsal fin", "Pectoral fin", "Anal fin"], ans: 0 },
+      { topic: "Gills & Breathing", q: "How do most bony fish extract oxygen from water?", opts: ["Through gills with filaments", "Using lungs on the surface", "Through their tail scales", "By swallowing air bubbles"], ans: 0 },
+      { topic: "Buoyancy", q: "Which organ helps many bony fish control depth without constant swimming?", opts: ["Swim bladder", "Lateral line", "Gizzard", "Nasal sac"], ans: 0 },
+      { topic: "Sensory Organs", q: "What does a fish's lateral line detect?", opts: ["Water vibrations and movement", "Ultraviolet light", "Magnetic north", "Sound frequencies above 50 kHz"], ans: 0 },
+      { topic: "Scales & Skin", q: "What slimy layer coats many fish and reduces drag while protecting against parasites?", opts: ["Mucus cuticle", "Keratin shell", "Chitin plate", "Wax glaze"], ans: 0 },
+      { topic: "Freshwater vs Saltwater", q: "Freshwater fish tend to gain water through osmosis and therefore...", opts: ["Excrete dilute urine frequently", "Drink large amounts of water constantly", "Store salt in their tail fins", "Have no kidneys"], ans: 0 },
+      { topic: "Saltwater Osmoregulation", q: "Marine bony fish lose water to salty surroundings and typically...", opts: ["Drink seawater and excrete excess salt via gills", "Never drink water", "Convert salt into oxygen", "Live only near freshwater springs"], ans: 0 },
+      { topic: "Migration", q: "Fish that migrate between fresh water and sea water to spawn are called...", opts: ["Diadromous", "Benthic", "Pelagic", "Nocturnal"], ans: 0 },
+      { topic: "Camouflage", q: "Countershading (dark back, light belly) helps fish hide from predators when viewed from...", opts: ["Above and below", "Only the left side", "Directly behind", "Inside caves"], ans: 0 },
+      { topic: "Feeding Guilds", q: "A fish that feeds mostly on algae and plants is classified as...", opts: ["Herbivorous", "Piscivorous", "Detritivorous", "Planktivorous"], ans: 0 },
+      { topic: "Coral Reefs", q: "Cleaner wrasses help reef fish mainly by...", opts: ["Eating parasites and dead skin", "Building coral skeletons", "Scaring away all predators", "Creating oxygen bubbles"], ans: 0 },
+      { topic: "Predator Speed", q: "Streamlined fusiform bodies with crescent tails are typical of...", opts: ["Fast open-water cruisers", "Burrowing sand eels", "Slow leaf fish", "Bottom-dwelling flatfish"], ans: 0 },
+      { topic: "Flatfish Adaptation", q: "As a flounder matures, one eye migrates so both eyes sit on...", opts: ["The upper side of its head", "The tip of its snout", "Its pectoral fin", "Its gill cover"], ans: 0 },
+      { topic: "Deep Ocean", q: "Bioluminescence in deep-sea fish is commonly used for...", opts: ["Luring prey, camouflage, or signaling", "Boiling surrounding water", "Growing thicker scales", "Digesting rocks"], ans: 0 },
+      { topic: "Conservation", q: "Why do sustainable fishing limits and size rules matter for fish populations?", opts: ["They let fish reproduce before harvest", "They make fish grow square scales", "They turn saltwater into freshwater", "They eliminate all predators"], ans: 0 }
+    ];
+
+    function buildAllLevels() {
+      const levels = [];
+      for (let lvl = 1; lvl <= 20; lvl++) {
+        const tierName =
+          lvl === 20 ? "Grand Final: Abyssal Mastery" :
+          lvl >= 16 ? "Open Ocean & Deep Trench" :
+          lvl >= 11 ? "Coral Reef & Pelagic Waters" :
+          lvl >= 6 ? "Rivers, Lakes & Estuaries" : "Ponds & Streams Basics";
+
+        const questions = [];
+        for (let qIdx = 0; qIdx < 15; qIdx++) {
+          const base = QUESTION_BANK_BY_TOPIC[(lvl * 7 + qIdx) % QUESTION_BANK_BY_TOPIC.length];
+          const difficultyNote = lvl === 20 ? "[GRAND FINAL HARD] " : lvl >= 12 ? "[Advanced] " : "";
+          questions.push({
+            q: `${difficultyNote}(Lv.${lvl} • ${base.topic}) ${base.q}`,
+            opts: [...base.opts],
+            ans: base.ans
+          });
+        }
+        levels.push({ level: lvl, title: tierName, isFinal: lvl === 20, questions });
+      }
+      return levels;
+    }
+
+    const LEVELS = buildAllLevels();
+
+    // --- 5. GAME STATE & SAVE SYSTEM ---
+    function defaultState() {
+      return {
+        unlockedLevel: 1,
+        completedLevels: [],
+        gameCompleted: false,
+        cratesAvailable: 0,
+        equippedBait: "none",
+        equippedBobber: "wooden",
+        baitsOwned: { none: 1, good_worm: 1, great_shrimp: 0, amazing_krill: 0 },
+        bobbersOwned: { wooden: 1, iron: 0, gold: 0 },
+        caughtFish: [], // { id, name, rarity, attr, weightKg, lengthCm, color, caughtAt, level }
+        aquariumFishId: null,
+        tankTheme: "ocean",
+        tankLikes: 0,
+        lastSavedAt: null
+      };
+    }
+
+    const STORAGE_KEY = "aquaquest20_save_v1";
+    let state = loadState();
+    let activeQuiz = null;
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        return { ...defaultState(), ...JSON.parse(raw) };
+      } catch {
+        return defaultState();
+      }
+    }
+
+    function saveState(recordTimestamp = false) {
+      if (recordTimestamp) {
+        state.lastSavedAt = new Date().toLocaleString();
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      updateHUD();
+    }
+
+    function manualSave() {
+      saveState(true);
+      document.getElementById("last-saved-label").textContent = `Last saved: ${state.lastSavedAt}`;
+      alert(`Game saved locally on ${state.lastSavedAt}!`);
+    }
+
+    function exportSaveCode() {
+      saveState(true);
+      const code = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      document.getElementById("save-code-box").value = code;
+      document.getElementById("last-saved-label").textContent = `Last saved: ${state.lastSavedAt}`;
+    }
+
+    function importSaveCode() {
+      const box = document.getElementById("save-code-box").value.trim();
+      if (!box) return alert("Paste a save code first.");
+      try {
+        const parsed = JSON.parse(decodeURIComponent(escape(atob(box))));
+        state = { ...defaultState(), ...parsed };
+        saveState(false);
+        renderAll();
+        alert("Save code loaded!");
+      } catch {
+        alert("Invalid save code.");
+      }
+    }
+
+    function resetAllData() {
+      if (!confirm("Erase all local progress, fish, and saves?")) return;
+      state = defaultState();
+      localStorage.removeItem(STORAGE_KEY);
+      renderAll();
+    }
+
+    // --- 6. CATCH ODDS (RARITIES + ALBINO/SHINY + POST-GAME NERF) ---
+    function rollRarity() {
+      const bait = BAITS[state.equippedBait] || BAITS.none;
+      const bobber = BOBBERS[state.equippedBobber] || BOBBERS.wooden;
+
+      // Base percentages
+      let pDeepSea = 0.015 + bobber.deepSeaBoost + bait.bonus * 0.12;
+      let pLegendary = 0.055 + bobber.epicLegendBoost * 0.45 + bait.bonus * 0.20;
+      let pEpic = 0.11 + bobber.epicLegendBoost * 0.55 + bait.bonus * 0.25;
+      let pRare = 0.19 + bait.bonus * 0.25;
+      let pUncommon = 0.27 + bait.bonus * 0.18;
+
+      // After completing all 20 levels, make Epic, Legendary, and Deep-Sea noticeably rarer
+      if (state.gameCompleted) {
+        pDeepSea *= 0.35;
+        pLegendary *= 0.45;
+        pEpic *= 0.55;
+      }
+
+      const totalHigh = pDeepSea + pLegendary + pEpic + pRare + pUncommon;
+      if (totalHigh > 0.92) {
+        const scale = 0.92 / totalHigh;
+        pDeepSea *= scale; pLegendary *= scale; pEpic *= scale; pRare *= scale; pUncommon *= scale;
+      }
+      const pCommon = Math.max(0.08, 1 - (pDeepSea + pLegendary + pEpic + pRare + pUncommon));
+
+      const r = Math.random();
+      let acc = 0;
+      const buckets = [
+        ["Deep-Sea", pDeepSea],
+        ["Legendary", pLegendary],
+        ["Epic", pEpic],
+        ["Rare", pRare],
+        ["Uncommon", pUncommon],
+        ["Common", pCommon]
+      ];
+      for (const [tier, prob] of buckets) {
+        acc += prob;
+        if (r <= acc) return tier;
+      }
+      return "Common";
+    }
+
+    function rollAttribute() {
+      const roll = Math.random();
+      if (roll < 0.04) return "Shiny";
+      if (roll < 0.12) return "Albino";
+      return "Normal";
+    }
+
+    function catchNewFish(levelNum) {
+      const rarity = rollRarity();
+      const pool = FISH_SPECIES.filter(f => f.rarity === rarity);
+      const species = pool[Math.floor(Math.random() * pool.length)];
+      const attr = rollAttribute();
+      const weightKg = +(species.minKg + Math.random() * (species.maxKg - species.minKg)).toFixed(2);
+      const lengthCm = Math.round(species.minCm + Math.random() * (species.maxCm - species.minCm));
+
+      const fish = {
+        id: "f_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        name: species.name.trim(),
+        rarity,
+        attr,
+        weightKg,
+        lengthCm,
+        color: attr === "Albino" ? "#f8fafc" : species.color,
+        caughtAt: new Date().toLocaleString(),
+        level: levelNum
+      };
+
+      state.caughtFish.unshift(fish);
+      if (!state.aquariumFishId) state.aquariumFishId = fish.id;
+      saveState(false);
+      return fish;
+    }
+
+    // --- 7. CRATES EVERY 3 COMPLETED LEVELS ---
+    function openCrate() {
+      if (state.cratesAvailable <= 0) return;
+      state.cratesAvailable -= 1;
+
+      const dropBobber = Math.random() < 0.34;
+      let msg = "";
+
+      if (dropBobber) {
+        const roll = Math.random();
+        const key = roll < 0.2 ? "gold" : roll < 0.55 ? "iron" : "wooden";
+        state.bobbersOwned[key] = (state.bobbersOwned[key] || 0) + 1;
+        msg = `You opened a Fish Crate and found a <strong>${BOBBERS[key].name}</strong>! Equip it in Tackle &amp; Fish.`;
+      } else {
+        const roll = Math.random();
+        const key = roll < 0.2 ? "amazing_krill" : roll < 0.55 ? "great_shrimp" : "good_worm";
+        state.baitsOwned[key] = (state.baitsOwned[key] || 0) + 1;
+        msg = `You opened a Fish Crate and found <strong>${BAITS[key].name}</strong> (${BAITS[key].tier})! Equip it in Tackle &amp; Fish.`;
+      }
+
+      saveState(false);
+      const banner = document.getElementById("crate-result-banner");
+      banner.style.display = "block";
+      banner.innerHTML = `<strong>📦 Crate Reward:</strong> ${msg}`;
+      renderAll();
+    }
+
+    // --- 8. QUIZ FLOW ---
+    function startLevel(lvlNum) {
+      if (lvlNum > state.unlockedLevel) return;
+      const lvlObj = LEVELS[lvlNum - 1];
+      activeQuiz = {
+        levelObj,
+        index: 0,
+        correctCount: 0,
+        caughtCount: 0,
+        answered: false
+      };
+      switchTab("quiz");
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const qObj = activeQuiz.levelObj.questions[activeQuiz.index];
+      document.getElementById("quiz-level-label").textContent =
+        `Level ${activeQuiz.levelObj.level} — Question ${activeQuiz.index + 1} / ${activeQuiz.levelObj.questions.length}`;
+      document.getElementById("quiz-score-label").textContent =
+        `Correct: ${activeQuiz.correctCount} | Caught: ${activeQuiz.caughtCount}`;
+      document.getElementById("quiz-progress-bar").style.width =
+        `${(activeQuiz.index / activeQuiz.levelObj.questions.length) * 100}%`;
+      document.getElementById("question-text").textContent = qObj.q;
+      document.getElementById("answer-feedback").textContent = "";
+      document.getElementById("catch-reward-area").innerHTML = "";
+      document.getElementById("next-q-btn").disabled = true;
+      activeQuiz.answered = false;
+
+      const grid = document.getElementById("options-grid");
+      grid.innerHTML = "";
+      qObj.opts.forEach((optText, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "opt-btn";
+        btn.textContent = optText;
+        btn.onclick = () => selectAnswer(idx, btn);
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectAnswer(idx, btnEl) {
+      if (activeQuiz.answered) return;
+      activeQuiz.answered = true;
+      const qObj = activeQuiz.levelObj.questions[activeQuiz.index];
+      const allBtns = document.querySelectorAll("#options-grid .opt-btn");
+      allBtns.forEach((b, i) => {
+        b.disabled = true;
+        if (i === qObj.ans) b.classList.add("correct");
+      });
+
+      const fb = document.getElementById("answer-feedback");
+      if (idx === qObj.ans) {
+        activeQuiz.correctCount += 1;
+        fb.style.color = "var(--ok)";
+        fb.textContent = "Correct! Casting your line...";
+
+        const fish = catchNewFish(activeQuiz.levelObj.level);
+        activeQuiz.caughtCount += 1;
+        const attrBadge = fish.attr !== "Normal"
+          ? `<span class="tag attr-${fish.attr}">${fish.attr}</span>`
+          : "";
+        document.getElementById("catch-reward-area").innerHTML = `
+          <div class="catch-box">
+            <div>
+              <div><span class="tag r-${fish.rarity}">${fish.rarity}</span>${attrBadge}<strong>${fish.name}</strong></div>
+              <div class="small" style="margin-top:4px;">Weight: <strong>${fish.weightKg} kg</strong> • Length: <strong>${fish.lengthCm} cm</strong> • Caught: ${fish.caughtAt}</div>
+            </div>
+            <span class="pill">Added to Collection</span>
+          </div>
+        `;
+      } else {
+        btnEl.classList.add("wrong");
+        fb.style.color = "var(--danger)";
+        fb.textContent = `Not quite! The right answer was: ${qObj.opts[qObj.ans]}.`;
+      }
+
+      document.getElementById("quiz-score-label").textContent =
+        `Correct: ${activeQuiz.correctCount} | Caught: ${activeQuiz.caughtCount}`;
+      document.getElementById("next-q-btn").disabled = false;
+      document.getElementById("next-q-btn").textContent =
+        activeQuiz.index === activeQuiz.levelObj.questions.length - 1 ? "Finish Level ✓" : "Next Question →";
+    }
+
+    function nextQuestion() {
+      if (!activeQuiz.answered) return;
+      if (activeQuiz.index < activeQuiz.levelObj.questions.length - 1) {
+        activeQuiz.index += 1;
+        renderQuestion();
+      } else {
+        completeCurrentLevel();
+      }
+    }
+
+    function completeCurrentLevel() {
+      const lvl = activeQuiz.levelObj.level;
+      const firstTime = !state.completedLevels.includes(lvl);
+      if (firstTime) {
+        state.completedLevels.push(lvl);
+        if (lvl % 3 === 0) {
+          state.cratesAvailable += 1;
+        }
+        if (lvl === 20) {
+          state.gameCompleted = true;
+        }
+      }
+      if (lvl === state.unlockedLevel && lvl < 20) {
+        state.unlockedLevel = lvl + 1;
+      }
+      saveState(false);
+      alert(`Level ${lvl} complete! You caught ${activeQuiz.caughtCount} fish this run.${firstTime && lvl % 3 === 0 ? " You earned a Fish Crate!" : ""}`);
+      switchTab("map");
+      renderAll();
+    }
+
+    // --- 9. UI RENDERING, INVENTORY & 1-SLOT AQUARIUM ---
+    function switchTab(tabName) {
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      document.getElementById("view-" + tabName).classList.add("active");
+      document.querySelectorAll("header .nav-tabs button").forEach(b => {
+        b.classList.toggle("active-tab", b.dataset.tab === tabName);
+      });
+      renderAll();
+    }
+
+    function updateHUD() {
+      document.getElementById("hud-progress").textContent = `Unlocked: Lv.${state.unlockedLevel} / 20`;
+      document.getElementById("hud-catches").textContent = `🐟 ${state.caughtFish.length} Caught`;
+      document.getElementById("crate-claim-btn").disabled = state.cratesAvailable <= 0;
+      document.getElementById("crate-claim-btn").textContent = `📦 Crates Ready: ${state.cratesAvailable}`;
+      document.getElementById("ngp-badge").style.display = state.gameCompleted ? "inline-block" : "none";
+      document.getElementById("tank-likes").textContent = state.tankLikes;
+      if (state.lastSavedAt) {
+        document.getElementById("last-saved-label").textContent = `Last saved: ${state.lastSavedAt}`;
+      }
+    }
+
+    function renderMap() {
+      const pathEl = document.getElementById("level-path");
+      pathEl.innerHTML = "";
+      LEVELS.forEach(lvlObj => {
+        const unlocked = lvlObj.level <= state.unlockedLevel;
+        const done = state.completedLevels.includes(lvlObj.level);
+        const wrap = document.createElement("div");
+        wrap.className = "level-node-wrap";
+
+        const circleClass = [
+          "level-circle",
+          unlocked ? "unlocked" : "",
+          done ? "completed" : "",
+          lvlObj.isFinal ? "final" : ""
+        ].join(" ").trim();
+
+        wrap.innerHTML = `
+          <div class="${circleClass}">${lvlObj.isFinal ? "👑" : lvlObj.level}</div>
+          <div class="level-meta">
+            <h3>Level ${lvlObj.level}${lvlObj.isFinal ? " — Grand Final" : ""}</h3>
+            <p>${lvlObj.title} • 15 Questions ${done ? "• Completed ✓" : ""}</p>
+          </div>
+          <button class="${unlocked ? "primary" : ""}" ${unlocked ? "" : "disabled"} onclick="startLevel(${lvlObj.level})">
+            ${done ? "Replay" : unlocked ? "Play" : "Locked"}
+          </button>
+        `;
+        pathEl.appendChild(wrap);
+      });
+    }
+
+    function renderInventory() {
+      const baitSel = document.getElementById("bait-select");
+      baitSel.innerHTML = "";
+      Object.entries(BAITS).forEach(([key, b]) => {
+        const owned = state.baitsOwned[key] || 0;
+        if (owned > 0 || key === "none") {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = `${b.name} (x${owned})`;
+          if (state.equippedBait === key) opt.selected = true;
+          baitSel.appendChild(opt);
+        }
+      });
+
+      const bobSel = document.getElementById("bobber-select");
+      bobSel.innerHTML = "";
+      Object.entries(BOBBERS).forEach(([key, b]) => {
+        const owned = state.bobbersOwned[key] || 0;
+        if (owned > 0) {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = `${b.name} (x${owned})`;
+          if (state.equippedBobber === key) opt.selected = true;
+          bobSel.appendChild(opt);
+        }
+      });
+
+      document.getElementById("bait-inventory-list").innerHTML = Object.entries(BAITS)
+        .filter(([k]) => k !== "none")
+        .map(([k, b]) => `<li><strong>${b.name}</strong> (${b.tier}): Owned <strong>${state.baitsOwned[k] || 0}</strong></li>`)
+        .join("");
+
+      document.getElementById("bobber-inventory-list").innerHTML = Object.entries(BOBBERS)
+        .map(([k, b]) => `<li><strong>${b.name}</strong>: Owned <strong>${state.bobbersOwned[k] || 0}</strong></li>`)
+        .join("");
+
+      document.getElementById("fish-total-count").textContent = state.caughtFish.length;
+      const countsByRarity = {};
+      state.caughtFish.forEach(f => { countsByRarity[f.rarity] = (countsByRarity[f.rarity] || 0) + 1; });
+      document.getElementById("rarity-summary").textContent =
+        Object.entries(countsByRarity).map(([r, c]) => `${r}: ${c}`).join(" • ") || "No fish caught yet";
+
+      const grid = document.getElementById("fish-collection-grid");
+      if (state.caughtFish.length === 0) {
+        grid.innerHTML = `<p class="small">Answer questions right in any unlocked level to catch fish!</p>`;
+        return;
+      }
+      grid.innerHTML = state.caughtFish.map(f => `
+        <div class="fish-item">
+          <div>
+            <span class="tag r-${f.rarity}">${f.rarity}</span>
+            ${f.attr !== "Normal" ? `<span class="tag attr-${f.attr}">${f.attr}</span>` : ""}
+          </div>
+          <strong>${f.name}</strong>
+          <div class="small">${f.weightKg} kg • ${f.lengthCm} cm • Lv.${f.level}</div>
+          <div class="small" style="font-size:0.75rem; opacity:0.85;">Caught: ${f.caughtAt}</div>
+        </div>
+      `).join("");
+    }
+
+    function equipGear() {
+      const bVal = document.getElementById("bait-select").value;
+      const bobVal = document.getElementById("bobber-select").value;
+      if ((state.baitsOwned[bVal] || 0) > 0 || bVal === "none") state.equippedBait = bVal;
+      if ((state.bobbersOwned[bobVal] || 0) > 0) state.equippedBobber = bobVal;
+      saveState(false);
+    }
+
+    function setTankTheme(theme) {
+      state.tankTheme = theme;
+      saveState(false);
+    }
+
+    function setAquariumFish() {
+      state.aquariumFishId = document.getElementById("aquarium-fish-select").value || null;
+      saveState(false);
+      updateAquariumDetails();
+    }
+
+    function likeAquarium() {
+      state.tankLikes += 1;
+      saveState(false);
+    }
+
+    function updateAquariumDetails() {
+      const sel = document.getElementById("aquarium-fish-select");
+      sel.innerHTML = `<option value="">-- Empty Tank (0/1 Slot) --</option>` +
+        state.caughtFish.map(f =>
+          `<option value="${f.id}" ${state.aquariumFishId === f.id ? "selected" : ""}>${f.name} (${f.rarity}, ${f.weightKg} kg, ${f.lengthCm} cm)</option>`
+        ).join("");
+
+      const fish = state.caughtFish.find(f => f.id === state.aquariumFishId);
+      const det = document.getElementById("aquarium-fish-details");
+      if (!fish) {
+        det.textContent = "No fish currently in the 1-fish showcase slot.";
+      } else {
+        det.innerHTML = `Showing <strong>${fish.name}</strong> [${fish.rarity}${fish.attr !== "Normal" ? " • " + fish.attr : ""}] — <strong>${fish.weightKg} kg</strong>, <strong>${fish.lengthCm} cm</strong> (Caught ${fish.caughtAt}).`;
+      }
+    }
+
+    // Animated 1-Fish Aquarium Canvas
+    let swimX = 160;
+    let swimDir = 1;
+    function drawAquariumLoop() {
+      const canvas = document.getElementById("aquarium-canvas");
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        const themes = {
+          ocean: ["#0891b2", "#0e7490", "#164e63"],
+          abyss: ["#1e1b4b", "#0f172a", "#020617"],
+          kelp: ["#059669", "#047857", "#064e3b"],
+          sunset: ["#ea580c", "#9a3412", "#431407"]
+        };
+        const pal = themes[state.tankTheme] || themes.ocean;
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, pal[0]);
+        grad.addColorStop(0.6, pal[1]);
+        grad.addColorStop(1, pal[2]);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Sand floor
+        ctx.fillStyle = "rgba(253, 230, 138, 0.25)";
+        ctx.fillRect(0, canvas.height - 28, canvas.width, 28);
+
+        const fish = state.caughtFish.find(f => f.id === state.aquariumFishId);
+        if (fish) {
+          const scale = Math.min(2.1, Math.max(0.7, 0.75 + Math.log10(fish.lengthCm + 5) * 0.45));
+          const speed = 1.4 + (1 / Math.max(1, fish.weightKg / 20));
+          swimX += speed * swimDir;
+          if (swimX > canvas.width - 110) swimDir = -1;
+          if (swimX < 110) swimDir = 1;
+
+          const swimY = canvas.height * 0.48 + Math.sin(Date.now() / 420) * 14;
+
+          ctx.save();
+          ctx.translate(swimX, swimY);
+          ctx.scale(swimDir * scale, scale);
+
+          // Tail
+          ctx.fillStyle = fish.color;
+          ctx.beginPath();
+          ctx.moveTo(-26, 0);
+          ctx.lineTo(-44, -14);
+          ctx.lineTo(-44, 14);
+          ctx.closePath();
+          ctx.fill();
+
+          // Body
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 28, 15, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Eye
+          ctx.fillStyle = fish.attr === "Albino" ? "#ef4444" : "#0f172a";
+          ctx.beginPath();
+          ctx.arc(14, -4, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Shiny sparkle
+          if (fish.attr === "Shiny") {
+            ctx.fillStyle = "#fef08a";
+            ctx.beginPath();
+            ctx.arc(4, -8, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+      }
+      requestAnimationFrame(drawAquariumLoop);
+    }
+
+    function renderAll() {
+      updateHUD();
+      renderMap();
+      renderInventory();
+      updateAquariumDetails();
+    }
+
+    // --- 10. LOADING SCREEN INITIALIZER ---
+    function initWithFact() {
+      const chosenFact = FISH_FACTS[Math.floor(Math.random() * FISH_FACTS.length)];
+      document.getElementById("loading-fact").textContent = chosenFact;
+      renderAll();
+      drawAquariumLoop();
+
+      const bar = document.getElementById("loading-bar");
+      let pct = 0;
+      const timer = setInterval(() => {
+        pct += 10;
+        bar.style.width = pct + "%";
+        if (pct >= 100) {
+          clearInterval(timer);
+          setTimeout(() => {
+            document.getElementById("loading-screen").classList.add("hidden");
+          }, 220);
+        }
+      }, 130);
+    }
+
+    initWithFact();
+  </script>
+</body>
+</html>
